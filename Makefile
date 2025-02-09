@@ -148,8 +148,10 @@ $(OPENWRT_SRCDIR):
 	@{ \
 	set -ex ; \
 	git clone https://github.com/openwrt/openwrt.git $@ ; \
-	cd $@ ; \
-	git checkout v$(OPENWRT_RELEASE) ; \
+	if [ "$(OPENWRT_RELEASE)" != "snapshot" ]; then \
+		cd $@ ; \
+		git checkout v$(OPENWRT_RELEASE) ; \
+	fi ; \
 	}
 
 $(OPENWRT_SRCDIR)/feeds.conf: | $(OPENWRT_SRCDIR)
