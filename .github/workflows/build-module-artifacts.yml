@@ -65,7 +65,7 @@ jobs:
 
       - name: checkout openwrt (tag)
         uses: actions/checkout@v4
-        if: ${{ matrix.build_env.tag }} != 'snapshot'
+        if: ${{ matrix.build_env.tag != 'snapshot' }}
         with:
           path: openwrt
           repository: openwrt/openwrt
@@ -74,7 +74,7 @@ jobs:
 
       - name: checkout openwrt (main)
         uses: actions/checkout@v4
-        if: ${{ matrix.build_env.tag }} == 'snapshot'
+        if: ${{ matrix.build_env.tag == 'snapshot' }}
         with:
           path: openwrt
           repository: openwrt/openwrt
