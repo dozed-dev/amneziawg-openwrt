@@ -29,11 +29,13 @@ OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/releases
 OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/$(OPENWRT_RELEASE)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
 OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_RELEASE)-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
 OPENWRT_PKG_EXT   := .ipk
+PACKAGE_SCRIPT    := ipkg-make-index.sh
 else
 OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/snapshots
 OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
 OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
 OPENWRT_PKG_EXT   := .apk
+PACKAGE_SCRIPT    := apk-make-index.sh
 endif
 
 NPROC ?= $(shell getconf _NPROCESSORS_ONLN)
@@ -304,7 +306,7 @@ create-feed: | $(FEED_PATH) ## Create package feed
 	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*$(OPENWRT_PKG_EXT)"); do \
 		cp $${pkg} $${target_path}/ ; \
 	done ; \
-	( cd $${target_path} && $(TOPDIR)/scripts/ipkg-make-index.sh . >Packages && $(USIGN) -S -m Packages -s $(FEED_SEC_KEY) -x Packages.sig && gzip -fk Packages ) ; \
+	( cd $${target_path} && $(TOPDIR)/scripts/$(PACKAGE_SCRIPT) . >Packages && $(USIGN) -S -m Packages -s $(FEED_SEC_KEY) -x Packages.sig && gzip -fk Packages ) ; \
 	cat $${target_path}/Packages ; \
 	}
 

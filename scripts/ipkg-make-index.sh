@@ -25,7 +25,7 @@ fi
 
 empty=1
 
-for pkg in `find $pkg_dir -name '*.ipk' -o -name '*.apk' | sort`; do
+for pkg in `find $pkg_dir -name '*.ipk' | sort`; do
 	empty=
 	name="${pkg##*/}"
 	name="${name%%_*}"
