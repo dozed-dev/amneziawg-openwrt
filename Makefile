@@ -278,16 +278,19 @@ check-release: ## Verify that everything is in place for tagged release
 	fi ; \
 	}
 
-.PHONY: prepare-release
-prepare-release: check-release ## Save amneziawg-openwrt artifacts from tagged release
+.PHONY: create-feed-archive
+create-feed-archive: ## Create archive of a package feed
 	@{ \
-	set -ex ; \
+	set -eux ; \
 	cd $(OPENWRT_SRCDIR) ; \
 	mkdir -p $(AMNEZIAWG_DSTDIR) ; \
 	FEED_PATH="$(AMNEZIAWG_DSTDIR)/$(FEED_NAME)" $(MAKE) -f $(SELF) create-feed ; \
 	FEED_PATH="$(AMNEZIAWG_DSTDIR)/$(FEED_NAME)" $(MAKE) -f $(SELF) verify-feed ; \
 	tar -C $(AMNEZIAWG_DSTDIR)/$(FEED_NAME) -czvf $(AMNEZIAWG_DSTDIR)/$(FEED_NAME).tar.gz $(OPENWRT_RELEASE)/ ; \
 	}
+
+.PHONY: prepare-release
+prepare-release: check-release create-feed-archive ## Save amneziawg-openwrt artifacts from tagged release
 
 $(FEED_PATH):
 	mkdir -p $@
@@ -302,6 +305,7 @@ create-feed: | $(FEED_PATH) ## Create package feed
 		cp $${pkg} $${target_path}/ ; \
 	done ; \
 	( cd $${target_path} && $(TOPDIR)/scripts/ipkg-make-index.sh . >Packages && $(USIGN) -S -m Packages -s $(FEED_SEC_KEY) -x Packages.sig && gzip -fk Packages ) ; \
+	cat $${target_path}/Packages ; \
 	}
 
 .PHONY: verify-feed
