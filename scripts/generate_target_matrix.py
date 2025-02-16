@@ -16,7 +16,8 @@ logger = logging.getLogger(os.path.basename(__file__))
 
 # filtered targets for release builds
 TARGETS_TO_BUILD = ["ath79"]
-SUBTARGETS_TO_BUILD = ["generic", "nand"]
+#SUBTARGETS_TO_BUILD = ["generic", "nand"]
+SUBTARGETS_TO_BUILD = ["generic"]
 
 # filtered targets for snapshot builds
 SNAPSHOT_TARGETS_TO_BUILD = ["ath79"]
