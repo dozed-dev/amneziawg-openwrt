@@ -28,10 +28,12 @@ ifneq ($(OPENWRT_RELEASE),snapshot)
 OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/releases
 OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/$(OPENWRT_RELEASE)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
 OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_RELEASE)-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
+OPENWRT_PKG_EXT   := .ipk
 else
 OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/snapshots
 OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
 OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
+OPENWRT_PKG_EXT   := .apk
 endif
 
 NPROC ?= $(shell getconf _NPROCESSORS_ONLN)
@@ -88,6 +90,7 @@ SHOW_ENV_VARS = \
 	OPENWRT_VERMAGIC \
 	OPENWRT_BASE_URL \
 	OPENWRT_MANIFEST \
+	OPENWRT_PKG_EXT \
 	NPROC
 
 show-var-%:
@@ -250,9 +253,9 @@ prepare-artifacts: ## Save amneziawg-openwrt artifacts from regular builds
 	set -ex ; \
 	cd $(OPENWRT_SRCDIR) ; \
 	mkdir -p $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
-	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/amneziawg-tools_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
-	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/luci-proto-amneziawg_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
-	cp bin/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/packages/kmod-amneziawg_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/amneziawg-tools_*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/luci-proto-amneziawg_*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/packages/kmod-amneziawg_*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
 	}
 
 .PHONY: check-release
@@ -295,7 +298,7 @@ create-feed: | $(FEED_PATH) ## Create package feed
 	set -eux ; \
 	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
 	mkdir -p $${target_path} ; \
-	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*.ipk"); do \
+	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*$(OPENWRT_PKG_EXT)"); do \
 		cp $${pkg} $${target_path}/ ; \
 	done ; \
 	( cd $${target_path} && $(TOPDIR)/scripts/ipkg-make-index.sh . >Packages && $(USIGN) -S -m Packages -s $(FEED_SEC_KEY) -x Packages.sig && gzip -fk Packages ) ; \
