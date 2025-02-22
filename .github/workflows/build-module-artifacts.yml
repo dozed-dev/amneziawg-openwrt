@@ -35,6 +35,11 @@ on:
         type: string
         required: true
         default: "auto"
+      openwrt_snapshot_ref:
+        description: "OpenWrt snapshot git ref"
+        type: string
+        required: false
+        default: "main"
 
 jobs:
   build:
@@ -48,6 +53,7 @@ jobs:
             target: ${{ inputs.openwrt_target || vars.DEFAULT_OPENWRT_TARGET }}
             subtarget: ${{ inputs.openwrt_subtarget || vars.DEFAULT_OPENWRT_SUBTARGET }}
             vermagic: ${{ inputs.openwrt_vermagic || vars.DEFAULT_OPENWRT_VERMAGIC }}
+            snapshot_ref: ${{ inputs.openwrt_snapshot_ref || 'main' }}
 
     env:
       OPENWRT_RELEASE: ${{ matrix.build_env.tag }}
@@ -55,6 +61,7 @@ jobs:
       OPENWRT_TARGET: ${{ matrix.build_env.target }}
       OPENWRT_SUBTARGET: ${{ matrix.build_env.subtarget }}
       OPENWRT_VERMAGIC: ${{ matrix.build_env.vermagic }}
+      OPENWRT_SNAPSHOT_REF: ${{ matrix.build_env.snapshot_ref }}
 
     steps:
       - name: checkout amneziawg-openwrt
@@ -63,12 +70,22 @@ jobs:
           path: amneziawg-openwrt
           fetch-depth: 0
 
-      - name: checkout openwrt
+      - name: checkout openwrt (release)
         uses: actions/checkout@v4
+        if: ${{ matrix.build_env.tag != 'snapshot' }}
         with:
           path: openwrt
           repository: openwrt/openwrt
           ref: v${{ matrix.build_env.tag }}
+          fetch-depth: 0
+
+      - name: checkout openwrt (snapshot)
+        uses: actions/checkout@v4
+        if: ${{ matrix.build_env.tag == 'snapshot' }}
+        with:
+          path: openwrt
+          repository: openwrt/openwrt
+          ref: ${{ matrix.build_env.snapshot_ref }}
           fetch-depth: 0
 
       - name: checkout usign
@@ -119,18 +136,22 @@ jobs:
           time -p make build-amneziawg
           make prepare-artifacts
 
-      - name: create feed
-        id: create-feed
+      - name: create feed archive
+        id: create-feed-archive
         run: |
           set -x
           cd amneziawg-openwrt
           usign -G -s test.sec -p test.pub
-          FEED_SEC_KEY=$(pwd)/test.sec make create-feed
-          FEED_PUB_KEY=$(pwd)/test.pub make verify-feed
+          FEED_SEC_KEY=$(pwd)/test.sec FEED_PUB_KEY=$(pwd)/test.pub make create-feed-archive
+          cp test.sec ../awgrelease/test.sec-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
+          cp test.pub ../awgrelease/test.pub-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
 
       - name: upload artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: amneziawg-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
-          path: awgrelease/*
+          path: |
+            awgrelease/*.gz
+            awgrelease/test.pub-*
+            awgrelease/test.sec-*

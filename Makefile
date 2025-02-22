@@ -13,6 +13,7 @@ OPENWRT_ARCH      ?= mips_24kc
 OPENWRT_TARGET    ?= ath79
 OPENWRT_SUBTARGET ?= generic
 OPENWRT_VERMAGIC  ?= auto
+OPENWRT_SNAPSHOT_REF ?= main
 
 # for generate-target-matrix
 OPENWRT_RELEASES  ?= $(OPENWRT_RELEASE)
@@ -20,13 +21,21 @@ OPENWRT_RELEASES  ?= $(OPENWRT_RELEASE)
 GITHUB_SHA        ?= $(shell git rev-parse --short HEAD)
 VERSION_STR       ?= $(shell git describe --tags --long --dirty)
 POSTFIX           := $(VERSION_STR)_v$(OPENWRT_RELEASE)_$(OPENWRT_ARCH)_$(OPENWRT_TARGET)_$(OPENWRT_SUBTARGET)
-FEED_NAME         := amneziawg-opkg-feed-$(GITHUB_REF_NAME)-openwrt-$(OPENWRT_RELEASE)-$(OPENWRT_ARCH)-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET)
+FEED_NAME         := amneziawg-opkg-feed-$(VERSION_STR)-openwrt-$(OPENWRT_RELEASE)-$(OPENWRT_ARCH)-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET)
 
 WORKFLOW_REF      ?= $(shell git rev-parse --abbrev-ref HEAD)
 
+ifneq ($(OPENWRT_RELEASE),snapshot)
 OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/releases
 OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/$(OPENWRT_RELEASE)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
 OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_RELEASE)-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
+OPENWRT_PKG_EXT   := .ipk
+else
+OPENWRT_ROOT_URL  ?= https://downloads.openwrt.org/snapshots
+OPENWRT_BASE_URL  ?= $(OPENWRT_ROOT_URL)/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)
+OPENWRT_MANIFEST  ?= $(OPENWRT_BASE_URL)/openwrt-$(OPENWRT_TARGET)-$(OPENWRT_SUBTARGET).manifest
+OPENWRT_PKG_EXT   := .apk
+endif
 
 NPROC ?= $(shell getconf _NPROCESSORS_ONLN)
 
@@ -39,7 +48,11 @@ _NEED_VERMAGIC=1
 endif
 
 ifeq ($(_NEED_VERMAGIC), 1)
+ifneq ($(OPENWRT_RELEASE),snapshot)
 OPENWRT_VERMAGIC := $(shell curl -fs $(OPENWRT_MANIFEST) | grep -- "^kernel" | sed -e "s,.*\-,,")
+else
+OPENWRT_VERMAGIC := $(shell curl -fs $(OPENWRT_MANIFEST) | grep -- "^kernel" | sed -e "s,.*\~,," | cut -d '-' -f 1)
+endif
 endif
 
 ifndef USIGN
@@ -76,8 +89,10 @@ SHOW_ENV_VARS = \
 	OPENWRT_TARGET \
 	OPENWRT_SUBTARGET \
 	OPENWRT_VERMAGIC \
+	OPENWRT_SNAPSHOT_REF \
 	OPENWRT_BASE_URL \
 	OPENWRT_MANIFEST \
+	OPENWRT_PKG_EXT \
 	NPROC
 
 show-var-%:
@@ -136,10 +151,15 @@ github-build-artifacts: ## Run GitHub workflow to build amneziawg OpenWrt packag
 
 $(OPENWRT_SRCDIR):
 	@{ \
-	set -ex ; \
+	set -eux ; \
 	git clone https://github.com/openwrt/openwrt.git $@ ; \
-	cd $@ ; \
-	git checkout v$(OPENWRT_RELEASE) ; \
+	if [ "$(OPENWRT_RELEASE)" != "snapshot" ]; then \
+		cd $@ ; \
+		git checkout v$(OPENWRT_RELEASE) ; \
+	else \
+		cd $@ ; \
+		git checkout $(OPENWRT_SNAPSHOT_REF) ; \
+	fi ; \
 	}
 
 $(OPENWRT_SRCDIR)/feeds.conf: | $(OPENWRT_SRCDIR)
@@ -238,9 +258,9 @@ prepare-artifacts: ## Save amneziawg-openwrt artifacts from regular builds
 	set -ex ; \
 	cd $(OPENWRT_SRCDIR) ; \
 	mkdir -p $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
-	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/amneziawg-tools_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
-	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/luci-proto-amneziawg_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
-	cp bin/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/packages/kmod-amneziawg_*.ipk $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/amneziawg-tools*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/packages/$(OPENWRT_ARCH)/awgopenwrt/luci-proto-amneziawg*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	cp bin/targets/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/packages/kmod-amneziawg*$(OPENWRT_PKG_EXT) $(AMNEZIAWG_DSTDIR)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
 	}
 
 .PHONY: check-release
@@ -263,10 +283,10 @@ check-release: ## Verify that everything is in place for tagged release
 	fi ; \
 	}
 
-.PHONY: prepare-release
-prepare-release: check-release ## Save amneziawg-openwrt artifacts from tagged release
+.PHONY: create-feed-archive
+create-feed-archive: ## Create archive of a package feed
 	@{ \
-	set -ex ; \
+	set -eux ; \
 	cd $(OPENWRT_SRCDIR) ; \
 	mkdir -p $(AMNEZIAWG_DSTDIR) ; \
 	FEED_PATH="$(AMNEZIAWG_DSTDIR)/$(FEED_NAME)" $(MAKE) -f $(SELF) create-feed ; \
@@ -274,29 +294,73 @@ prepare-release: check-release ## Save amneziawg-openwrt artifacts from tagged r
 	tar -C $(AMNEZIAWG_DSTDIR)/$(FEED_NAME) -czvf $(AMNEZIAWG_DSTDIR)/$(FEED_NAME).tar.gz $(OPENWRT_RELEASE)/ ; \
 	}
 
+.PHONY: prepare-release
+prepare-release: check-release create-feed-archive ## Save amneziawg-openwrt artifacts from tagged release
+
 $(FEED_PATH):
 	mkdir -p $@
 
-.PHONY: create-feed
-create-feed: | $(FEED_PATH) ## Create package feed
+.PHONY: create-feed-ipk
+create-feed-ipk: | $(FEED_PATH)
 	@{ \
 	set -eux ; \
-	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
 	mkdir -p $${target_path} ; \
-	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*.ipk"); do \
+	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*$(OPENWRT_PKG_EXT)"); do \
 		cp $${pkg} $${target_path}/ ; \
 	done ; \
 	( cd $${target_path} && $(TOPDIR)/scripts/ipkg-make-index.sh . >Packages && $(USIGN) -S -m Packages -s $(FEED_SEC_KEY) -x Packages.sig && gzip -fk Packages ) ; \
+	cat $${target_path}/Packages ; \
 	}
 
-.PHONY: verify-feed
-verify-feed: | $(FEED_PATH) ## Verify package feed
+.PHONY: verify-feed-ipk
+verify-feed-ipk: | $(FEED_PATH)
 	@{ \
 	set -eux ; \
-	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET)/ ; \
+	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
 	cat $${target_path}/Packages ; \
 	find $${target_path}/ -type f | sort ; \
 	$(USIGN) -V -m $${target_path}/Packages -p $(FEED_PUB_KEY) ; \
 	( cd $${target_path} && gunzip -fk Packages.gz ) ; \
 	$(USIGN) -V -m $${target_path}/Packages -p $(FEED_PUB_KEY) ; \
 	}
+
+.PHONY: create-feed-apk
+create-feed-apk:
+	@{ \
+	set -eux ; \
+	export APK="$(OPENWRT_SRCDIR)/staging_dir/host/bin/apk" ; \
+	$${APK} --version ; \
+	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
+	mkdir -p $${target_path} ; \
+	for pkg in $$(find $(AMNEZIAWG_DSTDIR)/ -type f -name "*$(OPENWRT_PKG_EXT)"); do \
+		cp $${pkg} $${target_path}/ ; \
+	done ; \
+	$(TOPDIR)/scripts/apk-make-index.sh create "$${target_path}" ; \
+	$(TOPDIR)/scripts/apk-make-index.sh dump "$${target_path}" ; \
+	}
+
+.PHONY: verify-feed-apk
+verify-feed-apk:
+	@{ \
+	set -eux ; \
+	export APK="$(OPENWRT_SRCDIR)/staging_dir/host/bin/apk" ; \
+	$${APK} --version ; \
+	target_path=$(FEED_PATH)/$(OPENWRT_RELEASE)/$(OPENWRT_TARGET)/$(OPENWRT_SUBTARGET) ; \
+	$(TOPDIR)/scripts/apk-make-index.sh dump "$${target_path}" ; \
+	$(TOPDIR)/scripts/apk-make-index.sh verify "$${target_path}" ; \
+	}
+
+ifneq ($(OPENWRT_RELEASE),snapshot)
+.PHONY: create-feed
+create-feed: create-feed-ipk ## Create package feed
+
+.PHONY: verify-feed
+verify-feed: verify-feed-ipk ## Verify package feed
+else
+.PHONY: create-feed
+create-feed: create-feed-apk
+
+.PHONY: verify-feed
+verify-feed: verify-feed-apk
+endif
