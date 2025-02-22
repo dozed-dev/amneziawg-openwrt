@@ -78,6 +78,7 @@ jobs:
         with:
           path: openwrt
           repository: openwrt/openwrt
+          ref: 9772ca190ee45d33129ed2e0df3b3b7bd014a860
           fetch-depth: 0
 
       - name: checkout usign
