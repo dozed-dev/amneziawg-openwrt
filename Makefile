@@ -13,6 +13,7 @@ OPENWRT_ARCH      ?= mips_24kc
 OPENWRT_TARGET    ?= ath79
 OPENWRT_SUBTARGET ?= generic
 OPENWRT_VERMAGIC  ?= auto
+OPENWRT_SNAPSHOT_REF ?= main
 
 # for generate-target-matrix
 OPENWRT_RELEASES  ?= $(OPENWRT_RELEASE)
@@ -88,6 +89,7 @@ SHOW_ENV_VARS = \
 	OPENWRT_TARGET \
 	OPENWRT_SUBTARGET \
 	OPENWRT_VERMAGIC \
+	OPENWRT_SNAPSHOT_REF \
 	OPENWRT_BASE_URL \
 	OPENWRT_MANIFEST \
 	OPENWRT_PKG_EXT \
@@ -149,11 +151,14 @@ github-build-artifacts: ## Run GitHub workflow to build amneziawg OpenWrt packag
 
 $(OPENWRT_SRCDIR):
 	@{ \
-	set -ex ; \
+	set -eux ; \
 	git clone https://github.com/openwrt/openwrt.git $@ ; \
 	if [ "$(OPENWRT_RELEASE)" != "snapshot" ]; then \
 		cd $@ ; \
 		git checkout v$(OPENWRT_RELEASE) ; \
+	else \
+		cd $@ ; \
+		git checkout $(OPENWRT_SNAPSHOT_REF) ; \
 	fi ; \
 	}
 

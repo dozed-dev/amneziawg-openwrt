@@ -28,6 +28,11 @@ on:
         type: string
         required: true
         default: "auto"
+      openwrt_snapshot_ref:
+        description: "Git ref for snapshot"
+        type: string
+        required: false
+        default: "main"
 
 jobs:
   build:
@@ -41,6 +46,7 @@ jobs:
             target: ${{ inputs.openwrt_target || vars.DEFAULT_OPENWRT_TARGET }}
             subtarget: ${{ inputs.openwrt_subtarget || vars.DEFAULT_OPENWRT_SUBTARGET }}
             vermagic: ${{ inputs.openwrt_vermagic || vars.DEFAULT_OPENWRT_VERMAGIC }}
+            snapshot_ref: ${{ inputs.openwrt_snapshot_ref || 'main' }}
 
     env:
       OPENWRT_RELEASE: ${{ matrix.build_env.tag }}
@@ -48,6 +54,7 @@ jobs:
       OPENWRT_TARGET: ${{ matrix.build_env.target }}
       OPENWRT_SUBTARGET: ${{ matrix.build_env.subtarget }}
       OPENWRT_VERMAGIC: ${{ matrix.build_env.vermagic }}
+      OPENWRT_SNAPSHOT_REF: ${{ matrix.build_env.snapshot_ref }}
 
     steps:
       - name: checkout amneziawg-openwrt
@@ -56,7 +63,7 @@ jobs:
           path: amneziawg-openwrt
           fetch-depth: 0
 
-      - name: checkout openwrt (tag)
+      - name: checkout openwrt (release)
         uses: actions/checkout@v4
         if: ${{ matrix.build_env.tag != 'snapshot' }}
         with:
@@ -65,12 +72,13 @@ jobs:
           ref: v${{ matrix.build_env.tag }}
           fetch-depth: 0
 
-      - name: checkout openwrt (main)
+      - name: checkout openwrt (snapshot)
         uses: actions/checkout@v4
         if: ${{ matrix.build_env.tag == 'snapshot' }}
         with:
           path: openwrt
           repository: openwrt/openwrt
+          ref: ${{ matrix.build_env.snapshot_ref }}
           fetch-depth: 0
 
       - name: building toolchain and kernel
