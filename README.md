@@ -101,6 +101,45 @@ Make sure you completed toolchain and kernel builds as described above, then run
 
 Do not forget to set your own build details. Once make invocation is complete, packages should be available in `${HOME}/openwrt-playground/awgrelease`.
 
+## Building AmneziaWG packages for OpenWrt snapshot
+
+This section describes how existing workflows can be used to build AmneziaWG packages for OpenWrt [snapshot](https://openwrt.org/releases/snapshot) (ongoing development branch).
+
+### Building package artifacts for OpenWrt snapshot: general steps
+
+These steps must be performed in a given order:
+
+1. Run the [build toolchain cache](.github/workflows/build-toolchain-cache.yml) workflow with the following inputs modified:
+
+    1. "OpenWrt version" must be set to `snapshot`,
+    2. "OpenWrt snapshot git ref" must be set either to `main` (default [upstream branch](https://github.com/openwrt/openwrt/branches)), or to a particular commit ref from [upstream history](https://github.com/openwrt/openwrt/commits/main/).
+
+    Example:
+    ![build-toolchain-cache for snapshot screenshot](docs/build-toolchain-cache-snapshot.png)
+
+2. Run the [build module artifacts](.github/workflows/build-module-artifacts.yml) workflow with the following inputs modified:
+
+    1. "OpenWrt version" must be set to `snapshot`,
+    2. "OpenWrt snapshot git ref" must be set to the same value as in the 1st step of building toolchain cache. Note that if you were using branch name while building toolchain cache, it's worth to use particular commit SHA from that job in this step (commit SHA can be found in job log for the "checkout openwrt (snapshot)" step - see e.g. [this one](https://github.com/defanator/amneziawg-openwrt/actions/runs/13474586977/job/37652166474#step:4:165) for the reference): this way the building environment for module/packages should be in consistent shape with previous one where toolchain/kernel were first created.
+
+    Example:
+    ![build-module-artifacts for snapshot screenshot](docs/build-module-artifacts-snapshot.png)
+
+3. Collect the artifacts - e.g. for [this run](https://github.com/defanator/amneziawg-openwrt/actions/runs/13480463738) you would get the following data:
+   ```
+   snapshot/ath79/generic/amneziawg-tools-1.0.20241018-r1.apk
+   snapshot/ath79/generic/kmod-amneziawg-6.6.78.1.0.20241112-r1.apk
+   snapshot/ath79/generic/luci-proto-amneziawg-0.0.1-r1.apk
+   snapshot/ath79/generic/packages.adb
+   snapshot/ath79/generic/packages.adb.txt
+   ```
+
+(Note that OpenWrt has migrated from `opkg` to `apk` (Alpine Package Keeper) package manager in snapshots.)
+
+### Debugging issues related to building for OpenWrt snapshot
+
+Under the hood the workflows run the same set of Makefile targets to achieve the goal, so in case of any issues you may refer to workflow logs and try to reproduce a failure in a manual build (follow the above guidance on how to build toolchain, kernel, and packages on VMs).
+
 ## Creating tagged releases
 
 In order to create new release, a SEMVER tag in a form of `vX.Y.Z` must be created and pushed to the repository.
