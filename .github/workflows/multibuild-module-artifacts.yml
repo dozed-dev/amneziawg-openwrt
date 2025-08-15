@@ -1,8 +1,6 @@
 name: build module artifacts for multiple targets
 
 on:
-  schedule:
-    - cron: '30 3 * * 2,6'
   pull_request:
     branches:
       - master
