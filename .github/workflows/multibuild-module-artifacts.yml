@@ -122,8 +122,9 @@ jobs:
           cd amneziawg-openwrt
           usign -G -s test.sec -p test.pub
           FEED_SEC_KEY=$(pwd)/test.sec FEED_PUB_KEY=$(pwd)/test.pub make create-feed-archive
-          cp test.sec ../awgrelease/test.sec-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
-          cp test.pub ../awgrelease/test.pub-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
+          echo 'done!'
+          cp test.sec "../awgrelease/test.sec-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}"
+          cp test.pub "../awgrelease/test.pub-${{ steps.build-amneziawg.outputs.version_str }}-openwrt-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}"
 
       - name: upload artifacts
         if: ${{ always() }}
