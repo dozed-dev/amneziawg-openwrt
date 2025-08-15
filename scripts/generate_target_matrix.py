@@ -15,9 +15,9 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(os.path.basename(__file__))
 
 # filtered targets for release builds
-TARGETS_TO_BUILD = ["ath79"]
+TARGETS_TO_BUILD = ["ramips"]
 #SUBTARGETS_TO_BUILD = ["generic", "nand"]
-SUBTARGETS_TO_BUILD = ["generic"]
+SUBTARGETS_TO_BUILD = ["mt7621"]
 
 # filtered targets for snapshot builds
 SNAPSHOT_TARGETS_TO_BUILD = ["ath79"]
